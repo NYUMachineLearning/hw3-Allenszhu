@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Homework 3 Allen Zhu"
 output:
   html_document:
     df_print: paged
@@ -116,10 +116,16 @@ library(dplyr)
 library(ggfortify)
 library(glmnet)
 library(tidyverse)
+library(e1071)
+
+
 ```
 
-Split data into training and test set
-```{r}
+
+
+```{r include=FALSE}
+#Split data into training and test set
+
 train_size <- floor(0.75 * nrow(airquality))
 set.seed(543)
 train_pos <- sample(seq_len(nrow(airquality)), size = train_size)
@@ -131,27 +137,29 @@ dim(test_regression)
 ```
 
 ## Resampling in R
-```{r}
-?trainControl
+```{r include=FALSE}
+# ?trainControl
 ```
 
 ## Ridge Regression
 
 $$Ridge Regression=\sum_{i=1}^{n}(y_i - w_0 - \sum_{j=1}^{p}w_jx_{ij})^2 + \lambda\sum_{j=1}^p(w_j)^2$$
 2. Create and train model 
-```{r}
+```{r include=FALSE}
 ctrl =  trainControl(method = "boot", 15)
 
 Ridge_regression <- train(Temp ~ Wind + Month, data = train_regression,
                           method = 'ridge', trControl= ctrl) 
 ```
 
-```{r}
+```{r include=FALSE}
 Ridge_regression 
+
+#Choose minimum lambda
 ```
 
 Examine the residuals 
-```{r}
+```{r include=FALSE}
 ridge_test_pred <- predict(Ridge_regression, newdata = test_regression)
 
 #plot the predicted values vs the observed values
@@ -174,26 +182,34 @@ median(resid(Ridge_regression))
 $$Lasso Regression=\sum_{i=1}^{n}(y_i - w_0 - \sum_{j=1}^{p}w_jx_{ij})^2 + \lambda\sum_{j=1}^p|w_j|$$
 2. Create and train model 
 ```{r}
+ctrl =  trainControl(method = "boot", 15)
 
-```
+Lasso_regression <- train(Temp ~ Wind + Month, data = train_regression,
+                          method = 'lasso', trControl= ctrl) 
 
-```{r}
 ```
 
 Examine the residuals 
 ```{r}
+lasso_test_pred <- predict(Lasso_regression, newdata = test_regression)
 
 #plot the predicted values vs the observed values
-
+plot_lasso_test_pred <- data.frame(Temp_test_pred = lasso_test_pred, 
+                                   Observed_Temp = test_regression$Temp)
+ggplot(data = plot_lasso_test_pred) +
+  geom_point(aes(x=Observed_Temp, y = Temp_test_pred)) + 
+  ggtitle("True Temp Value vs Predicted Temp Value Ridge Regression") +
+  theme_bw()
 
 #median residual value should be close to zero
+median(resid(Lasso_regression))
 ```
 
 
 # Classification
 
 1. Split into training and test set 
-```{r}
+```{r include=FALSE}
 data(iris)
 
 #split into training and test set 
@@ -214,7 +230,7 @@ dim(test_classifier)
 * LDA assumes a normal distribution with a class specific mean and common variance. 
 
 Let's see if our data follows the assumptions of LDA. 
-```{r}
+```{r include=FALSE}
 slength <- ggplot(data = iris, aes(x = Sepal.Length, fill = Species)) + 
   geom_histogram(position="identity", alpha=0.5, bins= 25)  +
   theme_bw()
@@ -234,21 +250,22 @@ grid.arrange(slength, swidth, plength, pwidth)
 ```{r}
 LDA <- lda(Species~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width, 
            data= train_classifier, cv= T)
+#cv  is cross validation
 ```
 
-```{r}
+```{r include=FALSE}
 LDA
 ```
 
 4. Test model on test set 
-```{r}
+```{r include=FALSE}
 #predict the species of the test data
 LDA_predict <- predict(LDA, newdata=test_classifier)
 confusionMatrix(LDA_predict$class, reference = test_classifier$Species)
 ```
 
 
-```{r}
+```{r include=FALSE}
 # save the predictions in a new variable
 predictions <- as.data.frame(LDA_predict$posterior) %>% 
   rownames_to_column("idx")
@@ -312,7 +329,7 @@ $P=odds/(odds+1)$
 * Log odds and independent variables should be linearly correlated.
 
 2. Train and fit model 
-```{r}
+```{r include=FALSE}
 data(iris)
 
 #split into training and test set 
@@ -341,20 +358,23 @@ ctrl <- trainControl(method = "repeatedcv", repeats = 15,classProbs = T,
 #predict species based on sepal length
 logistic_regression <- train(Species~ Sepal.Length, data = train_classifier_log, 
                              method = "glm", family= "binomial", trControl = ctrl)
+
+train_classifier_log$Species
+
 ```
 
 
-```{r}
+```{r include=FALSE}
 logistic_regression
 ```
 
 
-```{r}
+```{r include=FALSE}
 summary(logistic_regression)
 ```
 
 3. Visualize ROC curve 
-```{r}
+```{r include=FALSE}
 plot(x = roc(predictor = logistic_regression$pred$setosa,
              response = logistic_regression$pred$obs)$specificities, 
      y = roc(predictor = logistic_regression$pred$setosa, 
@@ -368,20 +388,24 @@ legend("bottomright", legend = paste("setosa v versicolor --",
 ```
 
 4. Test on an independent set
-```{r}
+```{r include=FALSE}
 #predict iris species using Sepal legth
-logistic_regression_predict_class <- predict(logistic_regression, 
-                                             newdata = test_classifier_log)
+logistic_regression_predict_class <- predict(logistic_regression, newdata = test_classifier_log)
 
 #confusion matrix
 confusionMatrix(logistic_regression_predict_class, 
                 reference = test_classifier_log$Species)
+
 ```
 
 Check if log odds and independent variables are linearly correlated
-```{r}
+```{r include=FALSE}
+
+
 logistic_regression_predict <- predict(logistic_regression, 
                                        newdata = test_classifier_log, type = "prob")
+
+odds_species1 <- logistic_regression_predict[,1] / (1 - logistic_regression_predict[,1])
 
 # To convert from a probability to odds, divide the probability by one minus that probability. So if the probability is 10% or 0.10 , then the odds are 0.1/0.9 or ‘1 to 9’ 
 
@@ -392,7 +416,7 @@ plot(log_odds_species1, test_classifier_log$Sepal.Length)
 ```
 
 Look deeper at the logistic regression 
-```{r}
+```{r include=FALSE}
 logistic_predict_prob <- predict(logistic_regression,
                                  newdata = test_classifier_log, type="prob")
 
@@ -414,15 +438,355 @@ ggplot(data = test_classifier_log) +
 
 1. Use the Breast Cancer dataset from the mlbench package, and predict whether the cancer is malignant or benign using one of the algorithms we learned about in class. Give some rationale as to why you chose this algorithm. Plot ROC curves, and confusion matrices. If you are choosing a hyperparameter like K or lambda, explain how and why you chose it. 
 
-```{r}
-#libra
-#train
-#test
+I selected a logistic regression to predict malignancy on the Breast Cancer dataset because it was testing between two classes: benign and malignant. Furthermore since the dependent variable is binary, we can then utilize the independent variables to make predictive analysis to make probability estimations. 
 
-##ctrl <- trainControl()
-## <- train(, data = , method = "", trControl = ctrl)
-## predict(, newdata="")
+```{r}
+library(mlbench)
 ```
+
+
+```{r}
+data(BreastCancer)
+
+
+str(BreastCancer)
+
+```
+
+
+```{r}
+# Train/Test set split 
+
+BC_size <- floor(0.75 * nrow(BreastCancer))
+set.seed(15)
+BC_pos <- sample(seq_len(nrow(BreastCancer)), size = BC_size)
+train_classifier <- BreastCancer[BC_pos,]
+test_classifier <- BreastCancer[-BC_pos,]
+
+dim(train_classifier)
+dim(test_classifier)
+
+
+
+
+```
+
+
+
+
+```{r ignore = TRUE}
+#Only 2 available.
+train_classifier_log <- train_classifier[c(which(train_classifier$Class == "benign"),
+                                           which(train_classifier$Class == "malignant")),]
+
+
+test_classifier_log <- test_classifier[c(which(test_classifier$Class == "benign"), 
+                                         which(test_classifier$Class == "malignant")),]
+
+
+
+ctrl <- trainControl(method = "repeatedcv", repeats = 15,classProbs = T,
+                     savePredictions = T)
+
+#Initially attempted to create a logistic regression model evaluating all the variables at once, and ended up with an error where my Pr(Z>|z|) values were all wonky, so I ran each variable separately
+
+
+#Bare.nuclei had na values, so I created a 'cleaned' training dataset that omitted all the nas. The following set of logistic regressions were all done on this 'cleaned' data set to promote consistency.
+train_clean <- na.omit(train_classifier_log)
+test_clean <- na.omit(test_classifier_log)
+
+dim(train_classifier_log)
+dim(test_classifier_log)
+
+dim(train_clean)
+
+
+# After running into an error further down the code, where the predictor curves required numerical inputs. The three tested variables were coerced into a numeric format.
+
+
+train_clean$Bare.nuclei <- as.numeric(as.character(train_clean$Bare.nuclei))
+train_clean$Mitoses <- as.numeric(as.character(train_clean$Mitoses))
+train_clean$Normal.nucleoli <- as.numeric(as.character(train_clean$Normal.nucleoli))
+
+
+
+test_clean$Bare.nuclei <- as.numeric(as.character(test_clean$Bare.nuclei))
+test_clean$Mitoses <- as.numeric(as.character(test_clean$Mitoses))
+test_clean$Normal.nucleoli <- as.numeric(as.character(test_clean$Normal.nucleoli))
+
+```
+
+
+```{r}
+# Individual logistic regressions for all the variables.
+
+BC_THC <- train(Class ~ Cl.thickness, data = train_clean, 
+                             method = "glm", family= "binomial", trControl = ctrl)
+
+summary(BC_THC)
+
+BC_CSize <- train(Class ~ Cell.size, data = train_clean, 
+                             method = "glm", family= "binomial", trControl = ctrl)
+summary(BC_CSize)
+
+
+BC_CShape <- train(Class ~ Cell.shape, data = train_clean, 
+                             method = "glm", family= "binomial", trControl = ctrl)
+summary(BC_CShape)
+
+
+BC_MA <- train(Class ~ Marg.adhesion, data = train_clean, 
+                             method = "glm", family= "binomial", trControl = ctrl)
+summary(BC_MA)
+
+
+BC_ECC <- train(Class ~ Epith.c.size, data = train_clean, 
+                             method = "glm", family= "binomial", trControl = ctrl)
+summary(BC_ECC)
+
+
+BC_BN <- train(Class ~ Bare.nuclei, data = train_clean, 
+                             method = "glm", family= "binomial", trControl = ctrl)
+summary(BC_BN)
+
+
+BC_BC <- train(Class ~ Bl.cromatin, data = train_clean, 
+                             method = "glm", family= "binomial", trControl = ctrl)
+
+BC_NN <- train(Class ~  Normal.nucleoli, data = train_clean, 
+                             method = "glm", family= "binomial", trControl = ctrl)
+summary(BC_NN)
+
+
+BC_M <- train(Class ~  Mitoses, data = train_clean, 
+                             method = "glm", family= "binomial", trControl = ctrl)
+summary(BC_M)
+
+
+```
+
+
+
+
+```{r }
+# After evaluating the logistic regressions, it seems that the variables that have a significant effect are Bare.nuclei, Normal.nucleoli, and Mitoses. A logistic regression was then run on just those three variables together. Unfortunately this resulted in a warning that stated the model reached reached what is assumed to be a perfect explanation, suggesting overfitting (the specific error is the following: glm.fit: fitted probabilities numerically 0 or 1 occurred). Any two of the three listed variables added together yielded the same result, so the three were tested separately to measure their effectiveness in predicting the cancer class. 
+
+
+# BC_Log <- train(Class ~ Bare.nuclei + Normal.nucleoli + Mitoses, data = train_clean, 
+                              # method = "glm", family= "binomial", trControl = ctrl)
+
+
+# summary(BC_Log)
+
+```
+
+
+
+
+```{r }
+# Roc Curve for Bare Nuclei 
+
+plot(x = roc(predictor = BC_BN$pred$malignant,
+             response = BC_BN$pred$obs)$specificities, 
+     y = roc(predictor = BC_BN$pred$malignant,
+             response = BC_BN$pred$obs)$sensitivities,
+     col= "blue", xlim = c(1, 0), type ="l", ylab = "Sensitivity",
+     xlab = "Specificity")
+legend("bottomright", legend = paste("malignant v benign --", 
+                                     roc(predictor = BC_BN$pred$malignant,
+                                         response = BC_BN$pred$obs)$auc
+, sep = ""), col = c("blue"), fill = c("blue"))
+
+```
+
+
+```{r}
+# Confusion matrix for bare nuclei and cancer malignancy
+
+
+#predict cancer class using Bare Nuclei
+BN_predict_class <- predict(BC_BN, newdata = test_clean)
+
+#confusion matrix
+confusionMatrix(BN_predict_class, 
+                reference = test_clean$Class)
+```
+
+
+```{r}
+# Checking for correlation between log odds and bare nuclei
+
+BN_predict <- predict(BC_BN, newdata = test_clean, type = "prob")
+
+# To convert from a probability to odds, divide the probability by one minus that probability. So if the probability is 10% or 0.10 , then the odds are 0.1/0.9 or ‘1 to 9’ 
+
+bnuclei <- BN_predict[,1] / (1 - BN_predict[,1])
+log_bnuclei <- log(bnuclei)
+cor.test(log_bnuclei, test_clean$Bare.nuclei)
+plot(log_bnuclei, test_clean$Bare.nuclei)
+```
+
+```{r}
+# Create a new column in the data set where the classes were turned into numbers, and subtracted by 1, so that the probability plot can be made without actually changing the original class column
+
+test_clean <- mutate(test_clean, Classifications = as.numeric(test_clean$Class) -1)
+
+#Probability curve for bare nuclei predicting breast cancer malignancy.
+
+BN_predict_prob <- predict(BC_BN, newdata = test_clean, type="prob")
+
+Bare_nuclei_pred_prob_plot <- data.frame(Class_pred = BN_predict_prob, Bare.nuclei  = test_clean$Bare.nuclei) 
+
+
+ggplot(data = test_clean) +
+  geom_point(aes(x=Bare.nuclei, y = Classifications)) + 
+  geom_line(data = Bare_nuclei_pred_prob_plot, aes(x = Bare.nuclei, 
+                                                y = Class_pred.benign, col =  "benign"))+
+  geom_line(data = Bare_nuclei_pred_prob_plot, aes(x = Bare.nuclei,
+                                                y = Class_pred.malignant, col = "malignant"))+
+  ggtitle("Probabilities for Cancer Class Based on Bare Nuclei")
+
+```
+
+
+
+```{r}
+#ROC Curve for normal nucleoli 
+
+plot(x = roc(predictor = BC_NN$pred$malignant,
+             response = BC_NN$pred$obs)$specificities, 
+     y = roc(predictor = BC_NN$pred$malignant, 
+             response = BC_NN$pred$obs)$sensitivities,
+     col= "blue", xlim = c(1, 0), type ="l", ylab = "Sensitivity",
+     xlab = "Specificity")
+legend("bottomright", legend = paste("malignant v benign --", 
+                                     roc(predictor = BC_NN$pred$malignant,
+                                         response = BC_NN$pred$obs)$auc
+, sep = ""), col = c("blue"), fill = c("blue"))
+```
+
+
+```{r}
+#Confusion matrix for normal nucleoli on cancer malignancy
+
+#predict iris species using Sepal legth
+NN_predict_class <- predict(BC_NN, newdata = test_clean)
+
+#confusion matrix
+confusionMatrix(NN_predict_class, 
+                reference = test_clean$Class)
+```
+
+```{r}
+#Correlation check on log odds and normal nucleoli
+
+
+NN_predict <- predict(BC_NN, newdata = test_clean, type = "prob")
+
+# To convert from a probability to odds, divide the probability by one minus that probability. So if the probability is 10% or 0.10 , then the odds are 0.1/0.9 or ‘1 to 9’ 
+
+Norm_nucleoli <- NN_predict[,1] / (1 - NN_predict[,1])
+log_normnuc <- log(Norm_nucleoli)
+cor.test(log_normnuc, test_clean$Normal.nucleoli)
+plot(log_normnuc, test_clean$Normal.nucleoli)
+```
+
+
+```{r}
+# Probability plot for normal nucleoli and cancer malignancy
+
+NN_predict_prob <- predict(BC_NN,  newdata = test_clean, type="prob")
+
+Normal_nucleoli_pred_prob_plot <- data.frame(Class_pred = NN_predict_prob, Normal.nucleoli  = test_clean$Normal.nucleoli) 
+
+
+ggplot(data = test_clean) +
+  geom_point(aes(x=Normal.nucleoli, y = Classifications)) + 
+  geom_line(data = Normal_nucleoli_pred_prob_plot, aes(x = Normal.nucleoli, 
+                                                y = Class_pred.benign, col =  "benign"))+
+  geom_line(data = Normal_nucleoli_pred_prob_plot, aes(x = Normal.nucleoli,
+                                                y = Class_pred.malignant, col = "malignant"))+
+  ggtitle("Probabilities for classifying species")
+
+```
+
+
+
+```{r}
+#ROC curve for mitoses and cancer malignancy 
+
+plot(x = roc(predictor = BC_M$pred$malignant,
+             response = BC_M$pred$obs)$specificities, 
+     y = roc(predictor = BC_M$pred$malignant, 
+             response = BC_M$pred$obs)$sensitivities,
+     col= "blue", xlim = c(1, 0), type ="l", ylab = "Sensitivity",
+     xlab = "Specificity")
+legend("bottomright", legend = paste("malignant v benign --", 
+                                     roc(predictor = BC_M$pred$malignant,
+                                         response = BC_M$pred$obs)$auc
+, sep = ""), col = c("blue"), fill = c("blue"))
+
+```
+
+
+
+
+
+
+
+
+```{r}
+#Confusion matri between mitoses class and cancer malignancy 
+M_predict_class <- predict(BC_M, newdata = test_clean)
+
+#confusion matrix
+confusionMatrix(M_predict_class, 
+                reference = test_clean$Class)
+```
+
+```{r}
+# Correlation test between log odds and mitoses
+
+M_predict <- predict(BC_M,  newdata = test_clean, type = "prob")
+
+# To convert from a probability to odds, divide the probability by one minus that probability. So if the probability is 10% or 0.10 , then the odds are 0.1/0.9 or ‘1 to 9’ 
+
+nonlog_mito <- M_predict[,1] / (1 - M_predict[,1])
+log_mito <- log(nonlog_mito)
+cor.test(log_mito, test_clean$Mitoses)
+plot(log_mito, test_clean$Mitoses)
+
+
+
+
+```
+
+```{r}
+# Probability plots of mitoses and cancer malignancy
+M_predict_prob <- predict(BC_M,  newdata = test_clean, type="prob")
+
+Mitoses_pred_prob_plot <- data.frame(Class_pred = M_predict_prob, Mitoses  = test_clean$Mitoses) 
+
+
+ggplot(data = test_clean) +
+  geom_point(aes(x=Mitoses, y = Classifications)) + 
+  geom_line(data = Mitoses_pred_prob_plot, aes(x = Mitoses, 
+                                                y = Class_pred.benign, col =  "benign"))+
+  geom_line(data = Mitoses_pred_prob_plot, aes(x = Mitoses,
+                                                y = Class_pred.malignant, col = "malignant"))+
+  ggtitle("Probabilities for classifying species")
+
+```
+
+
+
+
+
+
+
+
+
+
 
 
 References: 
